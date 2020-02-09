@@ -1,7 +1,8 @@
+#!/usr/bin/python3.7
 import pygame
 
 class tile(object):
-    "Class to represent a sudoku tile."
+    """Class to represent a sudoku tile."""
     def __init__(self, value, position, tileSize, tileColor, window, MinMax = (0, 10)):
         self.value = value
         self.__position = position
@@ -9,25 +10,36 @@ class tile(object):
         self.__color = tileColor
         self.__MinMax = MinMax
         self.__window = window
+        self.state = "normal"
 
     def click(self, state):
         """Handle the click action on this tile.\n
         Is passed mouse button states."""
         if state[0]:
-            self.__color = (0,0,0)
+            self.state = "active"
         elif state[1]:
-            self.__color = (255,255,255)
+            pass
         elif state[2]:
-            self.__color = (128,128,128)
+            pass
 
     def draw(self):
-        "Draw the tile on screen."
+        """Draw the tile on screen."""
+        def drawText():
+            font = pygame.font.Font("freesansbold.ttf", self.__size // 2)
+            text = font.render(str(self.value), True, (0,0,0), self.__color)
+            text_rect = text.get_rect()
+            text_rect.center = (self.__position[0] + (self.__size // 2), self.__position[1] + (self.__size // 2))
+            self.__window.blit(text, text_rect)
+        
         pygame.draw.rect(self.__window, self.__color, (self.__position[0] + 1, self.__position[1] + 1, self.__size - 2, self.__size - 2))
+        if self.value != None:
+            drawText()
 
     def change(self, change_to):
-        "Changes the value this tile holds if it is within the acceptable range."
+        """Changes the value this tile holds if it is within the acceptable range."""
         if change_to < self.__MinMax[1] and change_to >= self.__MinMax[0]:
             self.value = change_to
+        self.state = "normal"
 
 class tileGroup(object):
     "Class to represent the groups of 9 tiles in sudoku."
@@ -49,7 +61,7 @@ class tileGroup(object):
         gettile(position).click(state)
 
     def draw(self):
-        "Draw all tiles from this tilegroup on the display."
+        """Draw all tiles from this tilegroup on the display."""
         for tile in self.tiles:
             tile.draw()
 
@@ -102,15 +114,32 @@ class game(object):
             x = int(position[0] / (self.__tileSize * 3))
             y = int(position[1] / (self.__tileSize * 3))
             return self.__tileGroups[y + (x * 3)]
-        
         state = pygame.mouse.get_pressed()
         position = pygame.mouse.get_pos()
-        gettileGroup(position).click(state, position)
+        if self.__getActiveTile() == None:
+            gettileGroup(position).click(state, position)
     
     def __keyHandler(self):
         """Handle key presses."""
-        pass
+        keyStates = pygame.key.get_pressed()
+        if self.__getActiveTile() != None:
+            #If there is an active tile, get it and find out what to change it to
+            tile = self.__getActiveTile()
+            keyList = [pygame.K_0, pygame.K_1, pygame.K_2, pygame.K_3, pygame.K_4, pygame.K_5, pygame.K_6, pygame.K_7, pygame.K_8, pygame.K_9]
+            for i in range(len(keyList)):
+                if keyStates[keyList[i]]:
+                    tile.change(i)
+        else:
+            pass
     
+    def __getActiveTile(self):
+        """Returns the first tile which is active, otherwise return none."""
+        for tileGroup in self.__tileGroups:
+            for tile in tileGroup.tiles:
+                if tile.state == "active":
+                    return tile
+        return None
+
     def open(self):
         "Open main event loop."
         self.__running = True
