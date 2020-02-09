@@ -54,7 +54,7 @@ class game(object):
         self.__tileGroups = [tileGroup((x, y), tileSize, tileColor, self.__window) for x in range(0, tileSize * 9, tileSize * 3) for y in range(0, tileSize * 9, tileSize * 3)]
         #Set color attributes.
         self.__bgColor = bgColor
-        self.boundaryColor = boundaryColor
+        self.__boundaryColor = boundaryColor
         pygame.display.set_caption("Sudoku")
     
     def __draw(self):
@@ -66,7 +66,12 @@ class game(object):
                 tileGroup.draw()
         def draw_boundaries():
             """Draw the boundaries between the tileGroups."""
-            pass
+            #Draw boundaries along the board
+            for x in range(self.__tileSize * 3, self.__tileSize * 9 - 1, self.__tileSize * 3):
+                pygame.draw.rect(self.__window, self.__boundaryColor, (x-2, 0, 4, self.__windowSize[1]))
+            #Draw boundaries down the board
+            for y in range(self.__tileSize * 3, self.__tileSize * 9 - 1, self.__tileSize * 3):
+                pygame.draw.rect(self.__window, self.__boundaryColor, (0, y - 2, self.__windowSize[0], 4))
         
         #Call functions
         self.__window.fill(self.__bgColor)
