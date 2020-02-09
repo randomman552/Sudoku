@@ -10,10 +10,15 @@ class tile(object):
         self.__MinMax = MinMax
         self.__window = window
 
-    def click(self, button):
+    def click(self, state):
         """Handle the click action on this tile.\n
-        Can be passed 1, 2, or 3. Each corresponds to one of the mouse buttons."""
-        pass
+        Is passed mouse button states."""
+        if state[0]:
+            self.__color = (0,0,0)
+        elif state[1]:
+            self.__color = (255,255,255)
+        elif state[2]:
+            self.__color = (128,128,128)
 
     def draw(self):
         "Draw the tile on screen."
@@ -31,6 +36,17 @@ class tileGroup(object):
         #Create the tiles for this tileGroup as specified by position
         self.tiles = [tile(None, (x + 1,y + 1), tileSize - 2, tileColor, window) for x in range(position[0], position[0] +  3 * tileSize, tileSize) for y in range(position[1], position[1] + 3 * tileSize, tileSize)]
         self.__tileSize = tileSize
+    
+    def click(self, state, position):
+        """Carry out the click action on the required tile"""
+        def gettile(position):
+            "Get the tilegroup at the current position"
+            x = int(position[0] / (self.__tileSize))
+            y = int(position[1] / (self.__tileSize))
+            return self.tiles[y + x * 3]
+        #Normalise position for use within this tile
+        position = (position[0] - self.position[0], position[1] - self.position[1])
+        gettile(position).click(state)
 
     def draw(self):
         "Draw all tiles from this tilegroup on the display."
@@ -79,11 +95,28 @@ class game(object):
         draw_boundaries()
         pygame.display.update()
 
+    def __mouseHandler(self):
+        """Handle mouse actions."""
+        def gettileGroup(position):
+            "Get the tilegroup at the current position"
+            x = int(position[0] / (self.__tileSize * 3))
+            y = int(position[1] / (self.__tileSize * 3))
+            return self.__tileGroups[y + (x * 3)]
+        
+        state = pygame.mouse.get_pressed()
+        position = pygame.mouse.get_pos()
+        gettileGroup(position).click(state, position)
+    
+    def __keyHandler(self):
+        """Handle key presses."""
+        pass
+    
     def open(self):
         "Open main event loop."
         self.__running = True
         mouseDown, keyDown = False, False
         while self.__running:
+            #Event handler
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     self.close()
@@ -95,6 +128,12 @@ class game(object):
                     keyDown = True
                 elif event.type == pygame.KEYUP:
                     keyDown = False
+            
+            #If mouseDown or keyDown are true, call their respective functions.
+            if mouseDown:
+                self.__mouseHandler()
+            if keyDown:
+                self.__keyHandler()
             self.__draw()
         pygame.quit()
         quit()
