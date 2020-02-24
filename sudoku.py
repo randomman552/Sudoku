@@ -337,6 +337,66 @@ class game(object):
         self.__running = False
 
 
+class solver(object):
+    """Class for solving a sudoku board.\n
+    Board attribute should be a 9x9 matrix containing numbers between 1 and 9, or None if that tile is blank."""
+
+    def __init__(self, board):
+        # Board attribute used to store current state of the board, base board is used for comparisons.
+        self.__board = board
+        self.__baseBoard = []
+        for row in self.__board:
+            self.__baseBoard.append(row[:])
+        self.solutions = []
+
+    def __is_valid(self, pos, value):
+        """Validates the current board setup."""
+        for x in range(9):
+            for y in range(9):
+                #If the tile being checked is in a position where it needs to be checked, and isnt the same as pos
+                if (x // 3 == pos[0] // 3 and y // 3 == pos[1] // 3) or (x == pos[0] or y == pos[1]) and ([x, y] != pos):
+                    if self.__board[x][y] == value:
+                        return False
+        return True
+
+    def __printProgress(self):
+        print("Board: ")
+        for y in range(len(self.__board)):
+            print(self.__board[y])
+
+    def solve(self):
+        """Backtracking algorithm for solving the sudoku board passed when initialised"""
+        #Iterate over the coords in the board.
+        for x in range(len(board)):
+            for y in range(len(board)):
+                if self.__baseBoard[x][y] == 0 and self.__board[x][y] == 0:
+                    #Iterate of the numbers which could be inserted, when a valid one is found, insert it and call this function recursively.
+                    for num in range(1,10):
+                        if self.__is_valid([x, y], num):
+                            self.__board[x][y] = num
+                            self.solve()
+                            self.__board[x][y] = self.__baseBoard[x][y]
+                    #If none of the above numbers have been valid, return back to the previous step.
+                    return
+        solution = []
+        self.__printProgress()
+        for row in self.__board:
+            solution.append(row.copy())
+        self.solutions.append(solution)
+
 if __name__ == "__main__":
-    game = game(60, (255, 255, 255), (128, 128, 128), (0, 0, 0))
-    game.open()
+    # game = game(60, (255, 255, 255), (128, 128, 128), (0, 0, 0))
+    # game.open()
+    board = [
+        [0,0,4,0,0,3,0,0,5],
+        [0,0,3,4,0,7,0,6,1],
+        [0,9,0,0,8,0,0,0,4],
+        [4,0,6,2,5,9,0,7,0],
+        [0,0,8,0,0,0,5,0,0],
+        [0,2,0,8,3,1,4,0,6],
+        [7,0,0,0,2,0,0,4,0],
+        [1,4,0,3,0,6,2,0,0],
+        [3,0,0,9,0,0,1,0,0]
+    ]
+    solver = solver(board)
+    solver.solve()
