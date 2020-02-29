@@ -4,6 +4,7 @@ import random
 import time
 from tkinter import messagebox as ms_box
 import tkinter as tk
+import threading
 
 
 class game(object):
@@ -70,9 +71,11 @@ class game(object):
                 pygame.K_9: lambda: self.__set_active(9),
                 pygame.K_ESCAPE: lambda: self.close(),
                 pygame.K_r: lambda: self.__reset(),
+                pygame.K_RETURN: lambda: self.solve(),
             },
         }
         self.__font = pygame.font.Font("freesansbold.ttf", tile_size // 2)
+        self.worker_thread = None
         self.__reset()
         # Set color attributes.
         self.__background_color = background_color
@@ -137,18 +140,22 @@ class game(object):
         """Handle mouse actions."""
         pass
 
-    def __move_active(self, vector):
-        """Moves the active tile by the given vector."""
-        new_active = [self.__active_tile[0] + vector[0],
-                      self.__active_tile[1] + vector[1]]
-        # If the current active tile is off the left or right of the screen, wrap back to the other side.
-        if new_active[0] == 9:
-            new_active = [0, new_active[1] + 1]
-        elif new_active[0] == -1:
-            new_active = [8, new_active[1] - 1]
-        # If the new_active is within the acceptable bounds, update the current active tile.
-        if new_active[0] < 9 and new_active[1] < 9 and new_active[0] >= 0 and new_active[1] >= 0:
-            self.__active_tile = new_active
+    def __move_active(self, vector, absolute=False):
+        """Moves the active tile by the given vector when absolute is false.\n
+        Moves the active tile TO the given vector when absolute is true."""
+        if absolute:
+            self.__active_tile = vector
+        else:
+            new_active = [self.__active_tile[0] + vector[0],
+                          self.__active_tile[1] + vector[1]]
+            # If the current active tile is off the left or right of the screen, wrap back to the other side.
+            if new_active[0] == 9:
+                new_active = [0, new_active[1] + 1]
+            elif new_active[0] == -1:
+                new_active = [8, new_active[1] - 1]
+            # If the new_active is within the acceptable bounds, update the current active tile.
+            if new_active[0] < 9 and new_active[1] < 9 and new_active[0] >= 0 and new_active[1] >= 0:
+                self.__active_tile = new_active
 
     def __set_active(self, value):
         """Will set the active tile to the passed value, if it passes the __is_valid method."""
@@ -275,17 +282,31 @@ class game(object):
     def __reset(self):
         """Reset the game to its default state."""
         self.__generate_puzzle()
+        self.worker_thread = None
+        self.complete = False
 
     def __check_win(self):
         """Checks whether the sudoku board has been completed."""
-        for row in self.__board:
-            for num in row:
-                # If any of the numbers are still 0, then the board has been been completed.
-                if num == 0:
-                    return False
-        return True
+        if self.complete:
+            return False
+        else:
+            for row in self.__board:
+                for num in row:
+                    # If any of the numbers are still 0, then the board has been been completed.
+                    if num == 0:
+                        return False
+            self.complete = True
+            return True
 
     # Public methods
+    def solve(self):
+        def update_active(active_pos):
+            """This function is used by the solver to update the active tile position, so that it is drawn on screen correctly."""
+            self.__move_active(active_pos, True)
+            self.__draw()
+        s = solver(self.__board, False, update_active)
+        self.worker_thread = threading.Thread(target=s.solve)
+        self.worker_thread.start()
 
     def open(self):
         "Open main event loop."
@@ -314,10 +335,9 @@ class game(object):
                 # Carry out win action
                 temp = tk.Tk()
                 messagebox = ms_box.Message(
-                    temp, message="You win!", title="You win!", icon=ms_box.INFO)
+                    temp, message="Board Complete", title="Board Complete", icon=ms_box.INFO)
                 temp.withdraw()
                 messagebox.show()
-                self.__reset()
             #print("Time taken: " + str(end - strt))
         pygame.quit()
         quit()
@@ -329,17 +349,22 @@ class game(object):
 
 class solver(object):
     """Class for solving a sudoku board.\n
-    Board attribute should be a 9x9 matrix containing numbers between 1 and 9, or None if that tile is blank."""
+    Board attribute should be a 9x9 matrix containing numbers between 1 and 9, or 0 if that tile is blank.\n
+    If separate is set to True, a new copy of the board is made for this solver (to prevent editing the previous version."""
 
-    def __init__(self, board):
+    def __init__(self, board, separate=True, update_function=None):
         # Board attribute used to store current state of the board, base board is used for comparisons.
-        self.__board = []
-        for row in board:
-            self.__board.append(row[:])
+        if separate:
+            self.__board = []
+            for row in board:
+                self.__board.append(row[:])
+        else:
+            self.__board = board
         self.__baseBoard = []
         for row in self.__board:
             self.__baseBoard.append(row[:])
         self.solutions = []
+        self.__update_function = update_function
 
     def __is_valid(self, pos, value):
         """Validates the current board setup."""
@@ -351,10 +376,11 @@ class solver(object):
                         return False
         return True
 
-    def update(self):
+    def update(self, position):
         """This is a placeholder update function, this is called for each tile attempt, and could be used to update another window or print to the console.\n
         This should be overwritten if this is desirable."""
-        pass
+        if self.__update_function != None:
+            self.__update_function(position)
 
     def solve(self, no_of_solutions=1):
         """Begins the solving process, no_of_solutions is the number of solutions found before the solver stops."""
@@ -369,7 +395,7 @@ class solver(object):
         Once function is complete, the results can be found in the solver.solutions list\n
         no_of_solutions can be set to restrict the number of solutions to be found by the algorithm."""
         # Iterate over the coords in the board.
-        self.update()
+        self.update(start_pos)
         for x in range(start_pos[0], len(self.__board)):
             # Reset start_pos x to 0 to prevent any missed tiles.
             start_pos[0] = 0
@@ -384,14 +410,13 @@ class solver(object):
                             self.__board[x][y] = self.__baseBoard[x][y]
                     # If none of the above numbers have been valid, return back to the previous step.
                     return
+        solution = []
+        for row in self.__board:
+            solution.append(row.copy())
+        self.solutions.append(solution)
         if len(self.solutions) >= no_of_solutions:
             # An exception is raised to break out of the recurrsion.
             raise Exception("Max solutions reached... Aborting...")
-        else:
-            solution = []
-            for row in self.__board:
-                solution.append(row.copy())
-            self.solutions.append(solution)
 
 
 if __name__ == "__main__":
