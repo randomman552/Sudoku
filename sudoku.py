@@ -138,7 +138,12 @@ class game(object):
 
     def __mouseHandler(self):
         """Handle mouse actions."""
-        pass
+        mouse_preses = pygame.mouse.get_pressed()
+        pos = pygame.mouse.get_pos()
+        tile_x = pos[0] // self.__tile_size
+        tile_y = pos[1] // self.__tile_size
+        if mouse_preses[0]:
+            self.__move_active([tile_x, tile_y], absolute=True)
 
     def __move_active(self, vector, absolute=False):
         """Moves the active tile by the given vector when absolute is false.\n
@@ -338,7 +343,7 @@ class game(object):
                     temp, message="Board Complete", title="Board Complete", icon=ms_box.INFO)
                 temp.withdraw()
                 messagebox.show()
-            #print("Time taken: " + str(end - strt))
+            # print("Time taken: " + str(end - strt))
         pygame.quit()
         quit()
 
