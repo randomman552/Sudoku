@@ -15,18 +15,29 @@ class game(object):
     background_color sets the background color of the window.\n
     boundary_color sets the color of the boundary between the tileGroups."""
 
-    def __init__(self, tile_size=60, tile_color=(255,255,255), active_color=(255,0,0), locked_color=(0,0,255), background_color=(128,128,128), boundary_color=(0,0,0)):
+    def __init__(self, tile_size=60, tile_color=(255, 255, 255), active_color=(255, 0, 0), locked_color=(0, 0, 255), background_color=(128, 128, 128), boundary_color=(0, 0, 0)):
+        # Pygame setup
         pygame.init()
         pygame.font.init()
-        self.__tile_size = tile_size
+
+        # Window setup
         self.__windowSize = (tile_size * 9, tile_size * 9)
         self.__window = pygame.display.set_mode(self.__windowSize)
         pygame.display.set_caption("Sudoku")
-        self.__tile_color = tile_color
-        self.__active_color = active_color
-        self.__locked_color = locked_color
+        self.__font = pygame.font.Font("freesansbold.ttf", tile_size // 2)
+
+        # Tile setup
+        self.__tile_size = tile_size
         self.__active_tile = [0, 0]
+
+        # Threading lock
         self.__lock = threading.Lock()
+
+        # Message display attributes
+        self.__display_message = ""
+        self.__message_queue = []
+        self.__message_duration = 0
+
         # TODO: There must be a way to improve these key bindings?
         self.__key_bindings = {
             pygame.KMOD_LSHIFT: {
@@ -80,12 +91,19 @@ class game(object):
                 pygame.K_RETURN: lambda: self.solve(),
             },
         }
-        self.__font = pygame.font.Font("freesansbold.ttf", tile_size // 2)
+
+        # Attribute for storing worker thread
         self.worker_thread = None
-        self.__reset()
+
         # Set color attributes.
         self.__background_color = background_color
         self.__boundary_color = boundary_color
+        self.__tile_color = tile_color
+        self.__active_color = active_color
+        self.__locked_color = locked_color
+
+        # Call reset method
+        self.__reset()
 
     # Private methods
     def __draw(self):
@@ -103,11 +121,12 @@ class game(object):
                                  (0, y - 2, self.__windowSize[0], 4))
 
         def draw_tiles():
+            """Draw the tiles on the screen."""
             # For each coordinate on the board
             for x in range(0, 9):
                 for y in range(0, 9):
                     # Assign varaibles for this tile
-                    #X and y are flipped here so that the tiles are drawn correctly.
+                    # X and y are flipped here so that the tiles are drawn correctly.
                     tile_size = self.__tile_size - 2
                     tile_position = [y * self.__tile_size +
                                      1, x * self.__tile_size + 1]
@@ -139,17 +158,39 @@ class game(object):
                         text_rect.center = (
                             tile_position[0] + (tile_size // 2), tile_position[1] + (tile_size // 2))
                         self.__window.blit(text, text_rect)
+
+        def draw_message():
+            """Draw the current display message on the screen."""
+            # Check whether a new message needs to be displayed
+            if len(self.__message_queue) > 0 and self.__message_duration <= 0:
+                # Remove the message from the queue and add it to active variables
+                message = self.__message_queue.pop(0)
+                self.__message_duration = message[0]
+                self.__display_message = message[1]
+            # Display the message if its duration is greater than 0
+            if self.__message_duration > 0:
+                self.__message_duration -= 10
+                text_color = (
+                    255 - self.__tile_color[0], 255 - self.__tile_color[1], 255 - self.__tile_color[2])
+                text = self.__font.render(
+                    self.__display_message, True, text_color, self.__tile_color)
+                text_rect = text.get_rect()
+                text_rect.center = (
+                    self.__windowSize[0] // 2, self.__windowSize[1] // 2)
+                self.__window.blit(text, text_rect)
+
         # Call functions
         self.__window.fill(self.__background_color)
         draw_boundaries()
         draw_tiles()
+        draw_message()
         pygame.display.update()
 
     def __mouseHandler(self):
         """Handle mouse actions."""
         mouse_preses = pygame.mouse.get_pressed()
         pos = pygame.mouse.get_pos()
-        #Positions are reveresed here due to the way the tiles are drawn on screen
+        # Positions are reveresed here due to the way the tiles are drawn on screen
         tile_x = pos[1] // self.__tile_size
         tile_y = pos[0] // self.__tile_size
         if mouse_preses[0]:
@@ -179,10 +220,10 @@ class game(object):
 
     def __is_valid(self, pos, value):
         """Validates the current board setup."""
-        #Check whether the specified tile is writable.
+        # Check whether the specified tile is writable.
         if self.__base_board[pos[0]][pos[1]] != 0:
             return False
-        #Check all tiles in the same group, row, and collumn as the tile in the given position
+        # Check all tiles in the same group, row, and collumn as the tile in the given position
         for x in range(9):
             for y in range(9):
                 if value > 0:
@@ -250,6 +291,7 @@ class game(object):
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0]
         ]
+
         def inital_random():
             """Randomly allocate values to a random row, this then causes the rest of the generated solution to change."""
             y = random.randint(0, 8)
@@ -328,6 +370,16 @@ class game(object):
             return True
 
     # Public methods
+    def flash_message(self, message, delay):
+        """Add message to the message queue."""
+        message = (delay, message)
+        self.__message_queue.append(message)
+
+    def flash_messages(self, message_list, delay_list):
+        """Adds passed messages with given delays to the message queue."""
+        messages = zip(delay_list, message_list)
+        self.__message_queue += messages
+
     def solve(self):
         def update_active(active_pos):
             """This function is used by the solver to update the active tile position, so that it is drawn on screen correctly."""
@@ -360,18 +412,16 @@ class game(object):
                 self.__mouseHandler()
             if keyDown:
                 self.__keyHandler()
-            
+
             with self.__lock:
                 self.__draw()
 
             if self.__check_win():
                 # Carry out win action
-                temp = tk.Tk()
-                messagebox = ms_box.Message(
-                    temp, message="Board Complete", title="Board Complete", icon=ms_box.INFO)
-                temp.withdraw()
-                messagebox.show()
+                self.flash_message("Board Completed!", 1500)
             # print("Time taken: " + str(end - strt))
+            # Delay of 10 ms to set framerate to 100fps
+            pygame.time.delay(10)
         pygame.quit()
         quit()
 
