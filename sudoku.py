@@ -15,25 +15,31 @@ class game(object):
     background_color sets the background color of the window.\n
     boundary_color sets the color of the boundary between the tileGroups."""
 
-    def __init__(self, tile_size, tile_color, active_tile_color, background_color, boundary_color):
+    def __init__(self, tile_size=60, tile_color=(255,255,255), active_color=(255,0,0), locked_color=(0,0,255), background_color=(128,128,128), boundary_color=(0,0,0)):
         pygame.init()
         pygame.font.init()
         self.__tile_size = tile_size
         self.__windowSize = (tile_size * 9, tile_size * 9)
         self.__window = pygame.display.set_mode(self.__windowSize)
+        pygame.display.set_caption("Sudoku")
         self.__tile_color = tile_color
-        self.__active_tile_color = active_tile_color
+        self.__active_color = active_color
+        self.__locked_color = locked_color
         self.__active_tile = [0, 0]
+        self.__lock = threading.Lock()
         # TODO: There must be a way to improve these key bindings?
         self.__key_bindings = {
             pygame.KMOD_LSHIFT: {
-                pygame.K_TAB: lambda: self.__move_active([-1, 0])
+                pygame.K_TAB: lambda: self.__move_active([0, -1])
             },
             pygame.KMOD_RSHIFT: {
-                pygame.K_TAB: lambda: self.__move_active([-1, 0])
+                pygame.K_TAB: lambda: self.__move_active([0, -1])
             },
             pygame.KMOD_NUM + pygame.KMOD_LSHIFT: {
-                pygame.K_TAB: lambda: self.__move_active([-1, 0])
+                pygame.K_TAB: lambda: self.__move_active([0, -1])
+            },
+            pygame.KMOD_NUM + pygame.KMOD_RSHIFT: {
+                pygame.K_TAB: lambda: self.__move_active([0, -1])
             },
             pygame.KMOD_NUM: {
                 pygame.K_KP0: lambda: self.__set_active(0),
@@ -48,15 +54,15 @@ class game(object):
                 pygame.K_KP9: lambda: self.__set_active(9)
             },
             pygame.KMOD_NONE: {
-                pygame.K_UP: lambda: self.__move_active([0, -1]),
-                pygame.K_DOWN: lambda: self.__move_active([0, 1]),
-                pygame.K_LEFT: lambda: self.__move_active([-1, 0]),
-                pygame.K_RIGHT: lambda: self.__move_active([1, 0]),
-                pygame.K_w: lambda: self.__move_active([0, -1]),
-                pygame.K_s: lambda: self.__move_active([0, 1]),
-                pygame.K_a: lambda: self.__move_active([-1, 0]),
-                pygame.K_d: lambda: self.__move_active([1, 0]),
-                pygame.K_TAB: lambda: self.__move_active([1, 0]),
+                pygame.K_UP: lambda: self.__move_active([-1, 0]),
+                pygame.K_DOWN: lambda: self.__move_active([1, 0]),
+                pygame.K_LEFT: lambda: self.__move_active([0, -1]),
+                pygame.K_RIGHT: lambda: self.__move_active([0, 1]),
+                pygame.K_w: lambda: self.__move_active([-1, 0]),
+                pygame.K_s: lambda: self.__move_active([1, 0]),
+                pygame.K_a: lambda: self.__move_active([0, -1]),
+                pygame.K_d: lambda: self.__move_active([0, 1]),
+                pygame.K_TAB: lambda: self.__move_active([0, 1]),
                 pygame.K_BACKSPACE: lambda: self.__set_active(0),
                 pygame.K_DELETE: lambda: self.__set_active(0),
                 pygame.K_0: lambda: self.__set_active(0),
@@ -80,7 +86,6 @@ class game(object):
         # Set color attributes.
         self.__background_color = background_color
         self.__boundary_color = boundary_color
-        pygame.display.set_caption("Sudoku")
 
     # Private methods
     def __draw(self):
@@ -102,14 +107,18 @@ class game(object):
             for x in range(0, 9):
                 for y in range(0, 9):
                     # Assign varaibles for this tile
+                    #X and y are flipped here so that the tiles are drawn correctly.
                     tile_size = self.__tile_size - 2
-                    tile_position = [x * self.__tile_size +
-                                     1, y * self.__tile_size + 1]
+                    tile_position = [y * self.__tile_size +
+                                     1, x * self.__tile_size + 1]
                     tile_color = self.__tile_color
                     tile_value = self.__board[x][y]
                     # If this tile is active, draw a red boundary around it.
                     if [x, y] == self.__active_tile:
-                        active_tile_color = self.__active_tile_color
+                        if self.__base_board[x][y] == 0:
+                            active_tile_color = self.__active_color
+                        else:
+                            active_tile_color = self.__locked_color
                         pygame.draw.rect(self.__window, active_tile_color,
                                          (tile_position[0], tile_position[1], tile_size, tile_size))
                         pygame.draw.rect(self.__window, tile_color, (
@@ -140,8 +149,9 @@ class game(object):
         """Handle mouse actions."""
         mouse_preses = pygame.mouse.get_pressed()
         pos = pygame.mouse.get_pos()
-        tile_x = pos[0] // self.__tile_size
-        tile_y = pos[1] // self.__tile_size
+        #Positions are reveresed here due to the way the tiles are drawn on screen
+        tile_x = pos[1] // self.__tile_size
+        tile_y = pos[0] // self.__tile_size
         if mouse_preses[0]:
             self.__move_active([tile_x, tile_y], absolute=True)
 
@@ -149,7 +159,7 @@ class game(object):
         """Moves the active tile by the given vector when absolute is false.\n
         Moves the active tile TO the given vector when absolute is true."""
         if absolute:
-            self.__active_tile = vector
+            self.__active_tile = vector[:]
         else:
             new_active = [self.__active_tile[0] + vector[0],
                           self.__active_tile[1] + vector[1]]
@@ -169,6 +179,10 @@ class game(object):
 
     def __is_valid(self, pos, value):
         """Validates the current board setup."""
+        #Check whether the specified tile is writable.
+        if self.__base_board[pos[0]][pos[1]] != 0:
+            return False
+        #Check all tiles in the same group, row, and collumn as the tile in the given position
         for x in range(9):
             for y in range(9):
                 if value > 0:
@@ -225,7 +239,17 @@ class game(object):
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0]
         ]
-
+        self.__base_board = [
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ]
         def inital_random():
             """Randomly allocate values to a random row, this then causes the rest of the generated solution to change."""
             y = random.randint(0, 8)
@@ -282,7 +306,7 @@ class game(object):
         remove_tiles()
         self.__base_board = []
         for row in self.__board:
-            self.__base_board.append(row)
+            self.__base_board.append(row[:])
 
     def __reset(self):
         """Reset the game to its default state."""
@@ -307,8 +331,9 @@ class game(object):
     def solve(self):
         def update_active(active_pos):
             """This function is used by the solver to update the active tile position, so that it is drawn on screen correctly."""
-            self.__move_active(active_pos, True)
-            self.__draw()
+            with self.__lock:
+                self.__move_active(active_pos, True)
+                self.__draw()
         s = solver(self.__board, False, update_active)
         self.worker_thread = threading.Thread(target=s.solve)
         self.worker_thread.start()
@@ -335,7 +360,10 @@ class game(object):
                 self.__mouseHandler()
             if keyDown:
                 self.__keyHandler()
-            self.__draw()
+            
+            with self.__lock:
+                self.__draw()
+
             if self.__check_win():
                 # Carry out win action
                 temp = tk.Tk()
@@ -425,7 +453,7 @@ class solver(object):
 
 
 if __name__ == "__main__":
-    game = game(60, (255, 255, 255), (255, 0, 0), (128, 128, 128), (0, 0, 0))
+    game = game()
     game.open()
     """board = [
         [7,1,3,5,6,8,2,9,4],
