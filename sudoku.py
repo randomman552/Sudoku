@@ -5,7 +5,7 @@ import time
 from tkinter import messagebox as ms_box
 import tkinter as tk
 import threading
-
+import json
 
 class game(object):
     """Object represents the entire game.\n
@@ -101,6 +101,11 @@ class game(object):
         self.__tile_color = tile_color
         self.__active_color = active_color
         self.__locked_color = locked_color
+
+        #Load puzzles into memory
+        self.__puzzles = dict()
+        with open("puzzles.json", "r") as file:
+            self.__puzzles = json.load(file)
 
         # Call reset method
         self.__reset()
@@ -266,20 +271,9 @@ class game(object):
                         break
                 break
 
-    def __generate_puzzle(self):
-        """Generates a starting puzzle for the board (and verifies that it is possible and only has one solution)."""
-        # TODO Implement some sort of difficulty option?
-        self.__board = [
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0]
-        ]
+    def __load_puzzle(self, difficulty):
+        """Loads a random puzzle from the puzzles.json file genereated by the puzzle generator.\n
+        The puzzle is blended, so even if the same puzzle is loaded, it should look different."""
         self.__base_board = [
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -291,20 +285,13 @@ class game(object):
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0]
         ]
-
-        def inital_random():
-            """Randomly allocate values to a random row, this then causes the rest of the generated solution to change."""
-            y = random.randint(0, 8)
-            for x in range(0, 9):
-                while True:
-                    value = random.randint(1, 9)
-                    if self.__is_valid([x, y], value):
-                        self.__board[x][y] = value
-                        break
-            a = solver(self.__board)
-            a.solve()
-            self.__board = a.solutions[0]
-
+        
+        #Copy one of the boards from the puzzles dictionary for the required difficulty
+        to_copy = random.choice(self.__puzzles[difficulty])
+        self.__board = []
+        for row in to_copy:
+            self.__board.append(row.copy())
+        
         def blender():
             """This mixes the columns and rows randomly in order to make the board look more random."""
             def blend_rows():
@@ -331,28 +318,15 @@ class game(object):
 
             blend_rows()
             blend_columns()
-
-        def remove_tiles():
-            """This function removes tiles randomly from the board in order to produce a partially filled board with the minimum number of required clues."""
-            for x in range(0, 9):
-                for y in range(0, 9):
-                    if random.random() > 0.4:
-                        old_value = self.__board[x][y]
-                        self.__board[x][y] = 0
-                        a = solver(self.__board)
-                        a.solve(2)
-                        if a.solutions == 2:
-                            self.__board[x][y] = old_value
-        inital_random()
+        
         blender()
-        remove_tiles()
         self.__base_board = []
         for row in self.__board:
             self.__base_board.append(row[:])
 
     def __reset(self):
         """Reset the game to its default state."""
-        self.__generate_puzzle()
+        self.__load_puzzle("hard")
         self.worker_thread = None
         self.complete = False
 
@@ -471,7 +445,7 @@ class solver(object):
         try:
             self.__solve(no_of_solutions)
         except Exception as error:
-            print(error)
+            pass
 
     def __solve(self, no_of_solutions=1, start_pos=[0, 0]):
         """Backtracking algorithm for solving the sudoku board passed when initialised\n
@@ -506,16 +480,17 @@ if __name__ == "__main__":
     game = game()
     game.open()
     """board = [
-        [7,1,3,5,6,8,2,9,4],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0],
-        [0,0,0,0,0,0,0,0,0]
+        [0,0,0,8,0,0,0,5,0],
+        [0,0,0,0,7,0,8,0,2],
+        [1,0,0,5,0,0,6,0,0],
+        [0,0,9,4,0,0,0,6,0],
+        [0,7,0,9,0,1,0,4,0],
+        [0,4,0,0,0,2,9,0,0],
+        [0,0,5,0,0,7,0,0,6],
+        [2,0,3,0,9,0,0,0,0],
+        [0,8,0,0,0,6,0,0,0]
     ]
     solver = solver(board)
     solver.solve()
-    print(len(solver.solutions))"""
+    for row in solver.solutions[0]:
+        print(row)"""

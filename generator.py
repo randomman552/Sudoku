@@ -100,14 +100,20 @@ def generate_puzzle(difficulty_scalar, seed):
 
 if __name__ == "__main__":
     puzzles = dict()
+    difficulty_maping = {
+        "easy": 0.5,
+        "medium": 0.75,
+        "hard": 1,
+    }
     for i in range(100):
-        for difficulty in [0.5, 0.75, 1]:
-            puzzle = generate_puzzle(difficulty, i)
-            if difficulty in puzzles:
-                puzzles[difficulty].append(puzzle)
+        print(i)
+        for difficulty_str in ["easy", "medium", "hard"]:
+            puzzle = generate_puzzle(difficulty_maping[difficulty_str], i)
+            if difficulty_str in puzzles:
+                puzzles[difficulty_str].append(puzzle)
             else:
-                puzzles[difficulty] = []
-                puzzles[difficulty].append(puzzle)
+                puzzles[difficulty_str] = []
+                puzzles[difficulty_str].append(puzzle)
     
     with open("puzzles.json", "w") as file:
         json.dump(puzzles, file, indent=4)
