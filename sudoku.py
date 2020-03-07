@@ -275,18 +275,6 @@ class game(object):
     def __load_puzzle(self, difficulty):
         """Loads a random puzzle from the puzzles.json file genereated by the puzzle generator.\n
         The puzzle is blended and rotated, so even if the same puzzle is loaded, it should look different."""
-        self.__base_board = [
-            [1, 0, 0, 0, 0, 0, 0, 0, 2],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [4, 0, 0, 0, 0, 0, 0, 0, 3]
-        ]
-
         # Copy one of the boards from the puzzles dictionary for the required difficulty
         to_copy = random.choice(self.__puzzles[difficulty])
         self.__board = []
@@ -326,7 +314,7 @@ class game(object):
                 # Rotate board by 90 degrees
                 self.__board = [*zip(*self.__board[::-1])]
                 # Convert tuples back into lists
-                self.__board = [list(self.__board[i]) for i in range(9)]
+                self.__board = [list(row) for row in self.__board]
 
         blender()
         rotate()
