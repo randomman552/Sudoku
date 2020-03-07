@@ -7,6 +7,7 @@ import tkinter as tk
 import threading
 import json
 
+
 class game(object):
     """Object represents the entire game.\n
     tile_size arguments changes the size of the tiles. (size in px).\n
@@ -102,7 +103,7 @@ class game(object):
         self.__active_color = active_color
         self.__locked_color = locked_color
 
-        #Load puzzles into memory
+        # Load puzzles into memory
         self.__puzzles = dict()
         with open("puzzles.json", "r") as file:
             self.__puzzles = json.load(file)
@@ -273,8 +274,9 @@ class game(object):
 
     def __load_puzzle(self, difficulty):
         """Loads a random puzzle from the puzzles.json file genereated by the puzzle generator.\n
-        The puzzle is blended, so even if the same puzzle is loaded, it should look different."""
+        The puzzle is blended and rotated, so even if the same puzzle is loaded, it should look different."""
         self.__base_board = [
+            [1, 0, 0, 0, 0, 0, 0, 0, 2],
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
@@ -282,16 +284,15 @@ class game(object):
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
             [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0],
-            [0, 0, 0, 0, 0, 0, 0, 0, 0]
+            [4, 0, 0, 0, 0, 0, 0, 0, 3]
         ]
-        
-        #Copy one of the boards from the puzzles dictionary for the required difficulty
+
+        # Copy one of the boards from the puzzles dictionary for the required difficulty
         to_copy = random.choice(self.__puzzles[difficulty])
         self.__board = []
         for row in to_copy:
             self.__board.append(row.copy())
-        
+
         def blender():
             """This mixes the columns and rows randomly in order to make the board look more random."""
             def blend_rows():
@@ -318,8 +319,17 @@ class game(object):
 
             blend_rows()
             blend_columns()
-        
+
+        def rotate():
+            """Rotate the board a random multiple of 90 degrees."""
+            for _ in range(random.randint(0, 3)):
+                # Rotate board by 90 degrees
+                self.__board = [*zip(*self.__board[::-1])]
+                # Convert tuples back into lists
+                self.__board = [list(self.__board[i]) for i in range(9)]
+
         blender()
+        rotate()
         self.__base_board = []
         for row in self.__board:
             self.__base_board.append(row[:])
