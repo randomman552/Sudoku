@@ -39,6 +39,14 @@ class game(object):
         self.__message_queue = []
         self.__message_duration = 0
 
+        #Help function
+        def __display_help():
+            """Function to display help information on screen."""
+            self.__display_message = ""
+            self.__message_duration = 0
+            self.__message_queue = []
+            self.flash_messages(["Arrow keys, or mouse to change tile", "Press enter to self solve", "Press r to reset the board", "Press a number to fill the current tile"],[4000,4000,4000,4000])
+        
         # TODO: There must be a way to improve these key bindings?
         self.__key_bindings = {
             pygame.KMOD_LSHIFT: {
@@ -90,9 +98,10 @@ class game(object):
                 pygame.K_ESCAPE: lambda: self.close(),
                 pygame.K_r: lambda: self.__reset(),
                 pygame.K_RETURN: lambda: self.solve(),
+                pygame.K_F1: lambda: __display_help(),
             },
         }
-
+        
         # Attribute for storing worker thread
         self.worker_thread = None
 
@@ -110,7 +119,6 @@ class game(object):
 
         # Call reset method
         self.__reset()
-
     # Private methods
     def __draw(self):
         """Draw everything on the window."""
@@ -366,6 +374,7 @@ class game(object):
         "Open main event loop."
         self.__running = True
         mouseDown, keyDown = False, False
+        self.flash_message("Press F1 for help.", 4000)
         while self.__running:
             # Event loop
             for event in pygame.event.get():
