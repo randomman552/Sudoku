@@ -6,20 +6,81 @@ from tkinter import messagebox as ms_box
 import tkinter as tk
 import threading
 import json
+import sys
+from typing import Optional, Tuple
 
 
-class game(object):
-    """Object represents the entire game.\n
-    tile_size arguments changes the size of the tiles. (size in px).\n
-    All color arguments should be passed tuple in form (R,G,B).\n
-    tile_color sets the color of the tiles.\n
-    background_color sets the background color of the window.\n
-    boundary_color sets the color of the boundary between the tileGroups."""
+class DifficultyChooser(object):
+    """
+    GUI to choose a difficulty.
+        Init parameters:
+            difficulty (str) - The default difficulty to use. Should be "easy", "medium" or "hard".
+        How to use:
+            After instanciating the class, call the .open method to display the interface.
+            It will return the difficutly string.
+    """
 
-    def __init__(self, tile_size=60, tile_color=(255, 255, 255), active_color=(255, 0, 0), locked_color=(0, 0, 255), background_color=(128, 128, 128), boundary_color=(0, 0, 0)):
+    def __init__(self, difficulty: str):
+        self.window = tk.Tk()
+
+        self.difficulty = tk.StringVar(self.window, difficulty, "difficulty")
+
+        # Create our option radio buttons
+        options = ["easy", "medium", "hard"]
+        for i in range(len(options)):
+            button = tk.Radiobutton(
+                self.window, text=options[i].capitalize(), value=options[i], variable=self.difficulty, font=("sans", 10))
+            button.grid(column=0, row=i, columnspan=2, padx=100, pady=2)
+
+        # Create the exit and start buttons
+        exit_button = tk.Button(
+            self.window, command=self.exit, text="Exit", width=10, font=("sans", 10))
+        exit_button.grid(column=0, row=3)
+
+        start_button = tk.Button(
+            self.window, command=self.close, text="Start", width=10, font=("sans", 10))
+        start_button.grid(column=1, row=3)
+
+        # Prevent the window from being resized
+        self.window.resizable(False, False)
+
+    def open(self) -> str:
+        """Open the difficulty menu"""
+
+        self.window.mainloop()
+        return self.difficulty.get()
+
+    def close(self) -> str:
+        """
+        Close the difficulty window.
+        Returns the difficutly string.
+        """
+
+        self.window.destroy()
+        return self.difficulty.get()
+
+    def exit(self):
+        """Close the program"""
+
+        sys.exit(0)
+
+
+class Game(object):
+    """
+    Class to represent the game.
+        Init parameters:
+            difficulty (str) - A string to set the difficutly (must be "easy", "medium", or "hard).
+            tile_sze (int) - The size of each tile.
+        How to use:
+            After initalising, call the .open method to open the game window.
+    """
+
+    def __init__(self, difficulty: str, tile_size: Optional[int] = 60):
         # Pygame setup
         pygame.init()
         pygame.font.init()
+
+        self.difficulty = difficulty
 
         # Window setup
         self.__windowSize = (tile_size * 9, tile_size * 9)
@@ -106,12 +167,14 @@ class game(object):
         # Attribute for storing worker thread
         self.worker_thread = None
 
-        # Set color attributes.
-        self.__background_color = background_color
-        self.__boundary_color = boundary_color
-        self.__tile_color = tile_color
-        self.__active_color = active_color
-        self.__locked_color = locked_color
+        # Set window color attributes
+        self.__background_color = (128, 128, 128)
+        self.__boundary_color = (0, 0, 0)
+
+        # Set tile color attributes
+        self.__tile_color = (255, 255, 255)
+        self.__active_color = (255, 0, 0)
+        self.__locked_color = (0, 0, 255)
 
         # Load puzzles into memory
         self.__puzzles = dict()
@@ -124,6 +187,7 @@ class game(object):
 
     def __draw(self):
         """Draw everything on the window."""
+
         # Define draw subfunctions.
         def draw_boundaries():
             """Draw the boundaries between the tileGroups."""
@@ -204,6 +268,7 @@ class game(object):
 
     def __mouseHandler(self):
         """Handle mouse actions."""
+
         mouse_preses = pygame.mouse.get_pressed()
         pos = pygame.mouse.get_pos()
         # Positions are reveresed here due to the way the tiles are drawn on screen
@@ -213,8 +278,11 @@ class game(object):
             self.__move_active([tile_x, tile_y], absolute=True)
 
     def __move_active(self, vector, absolute=False):
-        """Moves the active tile by the given vector when absolute is false.\n
-        Moves the active tile TO the given vector when absolute is true."""
+        """
+        Moves the active tile by the given vector when absolute is false.\n
+        Moves the active tile TO the given vector when absolute is true.
+        """
+
         if absolute:
             self.__active_tile = vector[:]
         else:
@@ -231,11 +299,13 @@ class game(object):
 
     def __set_active(self, value):
         """Will set the active tile to the passed value, if it passes the __is_valid method."""
+
         if self.__is_valid(self.__active_tile, value):
             self.__board[self.__active_tile[0]][self.__active_tile[1]] = value
 
     def __is_valid(self, pos, value):
         """Validates the current board setup."""
+
         # Check whether the specified tile is writable.
         if self.__base_board[pos[0]][pos[1]] != 0:
             return False
@@ -251,6 +321,7 @@ class game(object):
 
     def __keyHandler(self):
         """Handle key presses."""
+
         key_states = pygame.key.get_pressed()
         mod_state = pygame.key.get_mods()
         # Go though the mods in the key_bindings dict.
@@ -283,8 +354,11 @@ class game(object):
                 break
 
     def __load_puzzle(self, difficulty):
-        """Loads a random puzzle from the puzzles.json file genereated by the puzzle generator.\n
-        The puzzle is blended and rotated, so even if the same puzzle is loaded, it should look different."""
+        """
+        Loads a random puzzle from the puzzles.json file genereated by the puzzle generator.
+        The puzzle is blended and rotated, so even if the same puzzle is loaded, it should look different.
+        """
+
         # Copy one of the boards from the puzzles dictionary for the required difficulty
         to_copy = random.choice(self.__puzzles[difficulty])
         self.__board = []
@@ -334,20 +408,22 @@ class game(object):
 
     def __reset(self):
         """Reset the game to its default state."""
+
         if self.worker_thread:
             self.worker_thread.stop()
-        self.__load_puzzle("hard")
+        self.__load_puzzle(self.difficulty)
         self.worker_thread = None
         self.complete = False
 
     def __check_win(self):
         """Checks whether the sudoku board has been completed."""
+
         if self.complete:
             return False
         else:
             for row in self.__board:
                 for num in row:
-                    # If any of the numbers are still 0, then the board has been been completed.
+                    # If none of the numbers are still 0, then the board has been been completed.
                     if num == 0:
                         return False
             self.complete = True
@@ -356,28 +432,34 @@ class game(object):
     # Public methods
     def flash_message(self, message, delay):
         """Add message to the message queue."""
+
         message = (delay, message)
         self.__message_queue.append(message)
 
     def flash_messages(self, message_list, delay_list):
         """Adds passed messages with given delays to the message queue."""
+
         messages = zip(delay_list, message_list)
         self.__message_queue += messages
 
     def solve(self):
+        """Start self-solving the current board"""
+
         def update_active(active_pos):
             """This function is used by the solver to update the active tile position, so that it is drawn on screen correctly."""
+
             with self.__lock:
                 self.__move_active(active_pos, True)
                 self.__draw()
         # Start the solver thread if one is not already running
         if not self.worker_thread:
-            s = solver(self.__board, False, update_active)
+            s = Solver(self.__board, False, update_active)
             self.worker_thread = s
             self.worker_thread.start()
 
     def open(self):
-        "Open main event loop."
+        """Open game window, call .close method to close the window."""
+
         self.__running = True
         mouseDown, keyDown = False, False
         self.flash_message("Press F1 for help.", 4000)
@@ -410,15 +492,16 @@ class game(object):
             # Delay of 10 ms to set framerate to 100fps
             pygame.time.delay(10)
         pygame.quit()
-        quit()
 
     def close(self):
-        "Close the game window"
-        self.worker_thread.stop()
+        """Close the game window"""
+
+        if self.worker_thread:
+            self.worker_thread.stop()
         self.__running = False
 
 
-class solver(threading.Thread):
+class Solver(threading.Thread):
     """Class for solving a sudoku board.\n
     Board attribute should be a 9x9 matrix containing numbers between 1 and 9, or 0 if that tile is blank.\n
     If separate is set to True, a new copy of the board is made for this solver (to prevent editing the previous version."""
@@ -525,20 +608,9 @@ class solver(threading.Thread):
 
 
 if __name__ == "__main__":
-    game = game()
-    game.open()
-    """board = [
-        [0,0,0,8,0,0,0,5,0],
-        [0,0,0,0,7,0,8,0,2],
-        [1,0,0,5,0,0,6,0,0],
-        [0,0,9,4,0,0,0,6,0],
-        [0,7,0,9,0,1,0,4,0],
-        [0,4,0,0,0,2,9,0,0],
-        [0,0,5,0,0,7,0,0,6],
-        [2,0,3,0,9,0,0,0,0],
-        [0,8,0,0,0,6,0,0,0]
-    ]
-    solver = solver(board)
-    solver.solve()
-    for row in solver.solutions[0]:
-        print(row)"""
+    difficulty = "easy"
+    while True:
+        difficulty_chooser = DifficultyChooser(difficulty)
+        difficulty = difficulty_chooser.open()
+        game = Game(difficulty)
+        game.open()
