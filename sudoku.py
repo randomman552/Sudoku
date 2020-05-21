@@ -3,6 +3,7 @@ import pygame
 import random
 import time
 from tkinter import messagebox as ms_box
+from tkinter import font as tkFont
 import tkinter as tk
 import threading
 import json
@@ -22,24 +23,50 @@ class DifficultyChooser(object):
 
     def __init__(self, difficulty: str):
         self.window = tk.Tk()
+        self.window.title("Sudoku")
 
+        # Attach the exit command to the WM_DELETE_WINDOW event (causes program to close correctly)
+        self.window.protocol("WM_DELETE_WINDOW", self.exit)
+
+        # Difficulty StringVar to store the result of the radio buttons
         self.difficulty = tk.StringVar(self.window, difficulty, "difficulty")
+
+        # Create title label for the menu
+        title_font = tkFont.Font(self.window, ("sans", 20), underline=True)
+        title_font.configure(underline=True)
+        title = tk.Label(self.window, text="Sudoku", font=title_font)
+        title.grid(column=0, row=0, columnspan=2, rowspan=2, padx=5, pady=2)
+
+        std_font = tkFont.Font(self.window, ("sans", 10))
 
         # Create our option radio buttons
         options = ["easy", "medium", "hard"]
         for i in range(len(options)):
-            button = tk.Radiobutton(
-                self.window, text=options[i].capitalize(), value=options[i], variable=self.difficulty, font=("sans", 10))
-            button.grid(column=0, row=i, columnspan=2, padx=100, pady=2)
+            button = tk.Radiobutton(self.window,
+                                    text=options[i].capitalize(),
+                                    value=options[i],
+                                    variable=self.difficulty,
+                                    font=std_font
+                                    )
+            button.grid(column=0, row=i + 2, columnspan=2,
+                        padx=100, pady=2, sticky=tk.W)
 
         # Create the exit and start buttons
-        exit_button = tk.Button(
-            self.window, command=self.exit, text="Exit", width=10, font=("sans", 10))
-        exit_button.grid(column=0, row=3)
+        exit_button = tk.Button(self.window,
+                                command=self.exit,
+                                text="Exit",
+                                width=10,
+                                font=std_font
+                                )
+        exit_button.grid(column=0, row=5, sticky=tk.E)
 
-        start_button = tk.Button(
-            self.window, command=self.close, text="Start", width=10, font=("sans", 10))
-        start_button.grid(column=1, row=3)
+        start_button = tk.Button(self.window,
+                                 command=self.close,
+                                 text="Start",
+                                 width=10,
+                                 font=std_font
+                                 )
+        start_button.grid(column=1, row=5, sticky=tk.W)
 
         # Prevent the window from being resized
         self.window.resizable(False, False)
@@ -57,6 +84,7 @@ class DifficultyChooser(object):
         """
 
         self.window.destroy()
+        self.window.quit()
         return self.difficulty.get()
 
     def exit(self):
