@@ -8,7 +8,9 @@ import tkinter as tk
 import threading
 import json
 import sys
-from typing import Optional, Tuple
+from solver import Solver
+import generator
+from typing import Optional, Tuple, List
 
 
 class DifficultyChooser(object):
@@ -137,7 +139,7 @@ class Game(object):
             self.flash_messages(["Arrow keys, or mouse to change tile", "Press enter to self solve",
                                  "Press r to reset the board", "Press a number to fill the current tile"], [4000, 4000, 4000, 4000])
 
-        # TODO: There must be a way to improve these key bindings?
+        # TODO: Is there a way to improve these key bindings?
         self.__key_bindings = {
             pygame.KMOD_LSHIFT: {
                 pygame.K_TAB: lambda: self.__move_active([0, -1])
@@ -205,9 +207,7 @@ class Game(object):
         self.__locked_color = (0, 0, 255)
 
         # Load puzzles into memory
-        self.__puzzles = dict()
-        with open("puzzles.json", "r") as file:
-            self.__puzzles = json.load(file)
+        self.__puzzles = generator.load_boards()
 
         # Call reset method
         self.__reset()
@@ -277,7 +277,7 @@ class Game(object):
                 self.__display_message = message[1]
             # Display the message if its duration is greater than 0
             if self.__message_duration > 0:
-                self.__message_duration -= 10
+                self.__message_duration -= 50
                 text_color = (
                     255 - self.__tile_color[0], 255 - self.__tile_color[1], 255 - self.__tile_color[2])
                 text = self.__font.render(
@@ -305,7 +305,7 @@ class Game(object):
         if mouse_preses[0]:
             self.__move_active([tile_x, tile_y], absolute=True)
 
-    def __move_active(self, vector, absolute=False):
+    def __move_active(self, vector:Tuple[int, int], absolute:Optional[bool]=False):
         """
         Moves the active tile by the given vector when absolute is false.\n
         Moves the active tile TO the given vector when absolute is true.
@@ -325,13 +325,13 @@ class Game(object):
             if new_active[0] < 9 and new_active[1] < 9 and new_active[0] >= 0 and new_active[1] >= 0:
                 self.__active_tile = new_active
 
-    def __set_active(self, value):
+    def __set_active(self, value:int):
         """Will set the active tile to the passed value, if it passes the __is_valid method."""
 
         if self.__is_valid(self.__active_tile, value):
             self.__board[self.__active_tile[0]][self.__active_tile[1]] = value
 
-    def __is_valid(self, pos, value):
+    def __is_valid(self, pos:Tuple[int, int], value:int):
         """Validates the current board setup."""
 
         # Check whether the specified tile is writable.
@@ -381,16 +381,17 @@ class Game(object):
                         break
                 break
 
-    def __load_puzzle(self, difficulty):
+    def __load_puzzle(self, difficulty:str):
         """
         Loads a random puzzle from the puzzles.json file genereated by the puzzle generator.
         The puzzle is blended and rotated, so even if the same puzzle is loaded, it should look different.
         """
 
         # Copy one of the boards from the puzzles dictionary for the required difficulty
-        to_copy = random.choice(self.__puzzles[difficulty])
+        to_copy = random.choice(list(self.__puzzles.keys()))
+        board = self.__puzzles[to_copy][difficulty]
         self.__board = []
-        for row in to_copy:
+        for row in board:
             self.__board.append(row.copy())
 
         def blender():
@@ -458,13 +459,13 @@ class Game(object):
             return True
 
     # Public methods
-    def flash_message(self, message, delay):
+    def flash_message(self, message:str, delay:int):
         """Add message to the message queue."""
 
         message = (delay, message)
         self.__message_queue.append(message)
 
-    def flash_messages(self, message_list, delay_list):
+    def flash_messages(self, message_list:List[str], delay_list:List[int]):
         """Adds passed messages with given delays to the message queue."""
 
         messages = zip(delay_list, message_list)
@@ -518,7 +519,7 @@ class Game(object):
                 self.flash_message("Board Completed!", 1500)
             # print("Time taken: " + str(end - strt))
             # Delay of 10 ms to set framerate to 100fps
-            pygame.time.delay(10)
+            pygame.time.delay(50)
         pygame.quit()
 
     def close(self):
@@ -527,112 +528,6 @@ class Game(object):
         if self.worker_thread:
             self.worker_thread.stop()
         self.__running = False
-
-
-class Solver(threading.Thread):
-    """Class for solving a sudoku board.\n
-    Board attribute should be a 9x9 matrix containing numbers between 1 and 9, or 0 if that tile is blank.\n
-    If separate is set to True, a new copy of the board is made for this solver (to prevent editing the previous version."""
-
-    def __init__(self, board, separate=True, update_function=None, no_of_solutions=1):
-
-        # Initalise the Thread
-        super().__init__(name="Solver")
-
-        # If the boards are supposed to be separated from the passed lists, create copies of them
-        if separate:
-            self.__board = []
-            for row in board:
-                self.__board.append(row[:])
-        else:
-            self.__board = board
-        self.__baseBoard = []
-        for row in self.__board:
-            self.__baseBoard.append(row[:])
-
-        # List to store solutions
-        self.solutions = []
-
-        # Store the update function, this is called for each recursive step in the backtracking algorithm
-        self.__update_function = update_function
-
-        # Store the requested number of solutions
-        self.no_of_solutions = no_of_solutions
-
-        # Stop event allows this thread to be stopped before it finishes if required
-        self.stop_event = threading.Event()
-
-    def __is_valid(self, pos, value):
-        """Validates the current board setup."""
-        for x in range(9):
-            for y in range(9):
-                # If the tile being checked is in a position where it needs to be checked, and isnt the same as pos
-                if (x // 3 == pos[0] // 3 and y // 3 == pos[1] // 3) or (x == pos[0] or y == pos[1]) and ([x, y] != pos):
-                    if self.__board[x][y] == value:
-                        return False
-        return True
-
-    def update(self, position):
-        """This is a placeholder update function, this is called for each tile attempt, and could be used to update another window or print to the console.\n
-        This should be overwritten if this is desirable."""
-        if self.__update_function != None:
-            self.__update_function(position)
-
-    def solve(self):
-        """Begins the solving process, no_of_solutions is the number of solutions found before the solver stops."""
-        # This is split off into another function in order to allow the aborting of this
-        try:
-            self.__solve(self. no_of_solutions)
-        except RuntimeError as error:
-            print(error)
-
-    def __solve(self, no_of_solutions=1, start_pos=[0, 0]):
-        """
-        Backtracking algorithm for solving the sudoku board passed when initialised\n
-        Once function is complete, the results can be found in the solver.solutions list\n
-        no_of_solutions can be set to restrict the number of solutions to be found by the algorithm.
-        """
-
-        # If the stop even it not present, proceed with the next step
-        if not self.stop_event.is_set():
-
-            self.update(start_pos)
-
-            # Iterate over the coords in the board.
-            for x in range(start_pos[0], len(self.__board)):
-
-                # Reset start_pos x to 0 to prevent any missed tiles.
-                start_pos[0] = 0
-                for y in range(start_pos[1], len(self.__board)):
-                    start_pos[1] = 0
-                    if self.__baseBoard[x][y] == 0 and self.__board[x][y] == 0:
-
-                        # Iterate of the numbers which could be inserted, when a valid one is found, insert it and call this function recursively.
-                        for num in range(1, 10):
-                            if self.__is_valid([x, y], num):
-                                self.__board[x][y] = num
-                                self.__solve(no_of_solutions, [x, y])
-                                self.__board[x][y] = self.__baseBoard[x][y]
-
-                        # If none of the above numbers have been valid, return back to the previous step.
-                        return
-            solution = []
-            for row in self.__board:
-                solution.append(row.copy())
-            self.solutions.append(solution)
-            if len(self.solutions) >= no_of_solutions:
-                # An exception is raised to break out of the recurrsion.
-                raise RuntimeError("Max solutions reached... Aborting...")
-
-        # If the stop_event is set, then raise an exception to abort the execution
-        else:
-            raise RuntimeError("Thread aborted")
-
-    def stop(self):
-        self.stop_event.set()
-
-    def run(self):
-        self.solve()
 
 
 if __name__ == "__main__":
