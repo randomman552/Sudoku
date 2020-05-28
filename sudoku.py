@@ -8,6 +8,7 @@ import tkinter as tk
 import threading
 import json
 import sys
+import time
 from solver import Solver
 import generator
 from typing import Optional, Tuple, List
@@ -443,6 +444,7 @@ class Game(object):
         self.__load_puzzle(self.difficulty)
         self.worker_thread = None
         self.complete = False
+        self.start_time = time.time()
 
     def __check_win(self):
         """Checks whether the sudoku board has been completed."""
@@ -516,7 +518,7 @@ class Game(object):
 
             if self.__check_win():
                 # Carry out win action
-                self.flash_message("Board Completed!", 1500)
+                self.flash_message(f"Complete, took {round(time.time() - self.start_time, 2)} seconds", 2000)
             # print("Time taken: " + str(end - strt))
             # Delay of 10 ms to set framerate to 100fps
             pygame.time.delay(50)
