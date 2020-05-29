@@ -1,12 +1,17 @@
 import threading
-
+from typing import List, Optional, Callable, Tuple
 
 class Solver(threading.Thread):
-    """Class for solving a sudoku board.\n
-    Board attribute should be a 9x9 matrix containing numbers between 1 and 9, or 0 if that tile is blank.\n
-    If separate is set to True, a new copy of the board is made for this solver (to prevent editing the previous version."""
+    """
+    Class for solving a sudoku board (sub class of threading.Thread)
+        Init parameters:
+            board (list) - 9 by 9 matrix containg numbers between 0 and 9, 0 for a blank tile.
+            separate (bool) - Optional bool, controls whether the given board is copied or linked to the passed list.
+            update_function (callable) - Optional callable, is called once per loop of the solver, the update function must take the current position and board (in that order) as arguments.
+            no_of_solutions (int) - Optional int, defines the number of solutions for the solver to generate, defaults to 1. The solver will terminate when it reaches this number.
+    """
 
-    def __init__(self, board, separate=True, update_function=None, no_of_solutions=1):
+    def __init__(self, board:List[List[int]], separate:Optional[bool]=True, update_function:Optional[Callable]=None, no_of_solutions:Optional[int]=1):
 
         # Initalise the Thread
         super().__init__(name="Solver")
@@ -34,7 +39,7 @@ class Solver(threading.Thread):
         # Stop event allows this thread to be stopped before it finishes if required
         self.stop_event = threading.Event()
 
-    def __is_valid(self, pos, value):
+    def __is_valid(self, pos:Tuple[int, int], value:int):
         """Validates the current board setup."""
         for x in range(9):
             for y in range(9):
@@ -44,11 +49,13 @@ class Solver(threading.Thread):
                         return False
         return True
 
-    def update(self, position):
-        """This is a placeholder update function, this is called for each tile attempt, and could be used to update another window or print to the console.\n
-        This should be overwritten if this is desirable."""
+    def update(self, position:Tuple[int, int], board:List[List[int]]):
+        """
+        This is a placeholder update function, this is called for each tile attempt, and could be used to update another window or print to the console.
+        This can be overridden by subclassing if desireable.
+        """
         if self.__update_function != None:
-            self.__update_function(position)
+            self.__update_function(position, board)
 
     def solve(self):
         """Begins the solving process, no_of_solutions is the number of solutions found before the solver stops."""
@@ -59,7 +66,7 @@ class Solver(threading.Thread):
             #print(error)
             pass
 
-    def __solve(self, no_of_solutions=1, start_pos=[0, 0]):
+    def __solve(self, no_of_solutions:Optional[int]=1, start_pos:Optional[Tuple[int, int]]=[0, 0]):
         """
         Backtracking algorithm for solving the sudoku board passed when initialised\n
         Once function is complete, the results can be found in the solver.solutions list\n
@@ -69,7 +76,7 @@ class Solver(threading.Thread):
         # If the stop even it not present, proceed with the next step
         if not self.stop_event.is_set():
 
-            self.update(start_pos)
+            self.update(start_pos, self.__board)
 
             # Iterate over the coords in the board.
             for x in range(start_pos[0], len(self.__board)):
@@ -102,7 +109,9 @@ class Solver(threading.Thread):
             raise RuntimeError("Thread aborted")
 
     def stop(self):
+        """Abort the solver"""
         self.stop_event.set()
 
     def run(self):
+        """Start the solver"""
         self.solve()

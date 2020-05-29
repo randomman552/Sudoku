@@ -495,11 +495,12 @@ class Game(object):
     def solve(self):
         """Start self-solving the current board"""
 
-        def update_active(active_pos):
+        def update_active(active_pos, board):
             """This function is used by the solver to update the active tile position, so that it is drawn on screen correctly."""
 
             with self.__lock:
                 self.__move_active(active_pos, True)
+                
         # Start the solver thread if one is not already running
         if not self.worker_thread:
             s = Solver(self.__board, False, update_active)
