@@ -114,7 +114,7 @@ class Game(object):
         self.difficulty = difficulty
 
         # Window setup
-        self.__windowSize = (tile_size * 9, tile_size * 9)
+        self.__windowSize = (tile_size * 9, tile_size * 9 + 50)
         self.__window = pygame.display.set_mode(self.__windowSize)
         pygame.display.set_caption("Sudoku")
         self.__font = pygame.font.Font("freesansbold.ttf", tile_size // 2)
@@ -223,12 +223,13 @@ class Game(object):
             # Draw boundaries along the board
             for x in range(self.__tile_size * 3, self.__tile_size * 9 - 1, self.__tile_size * 3):
                 pygame.draw.rect(self.__window, self.__boundary_color,
-                                 (x-2, 0, 4, self.__windowSize[1]))
+                                 (x-2, 0, 4, self.__windowSize[1] - 50))
+            
             # Draw boundaries down the board
             for y in range(self.__tile_size * 3, self.__tile_size * 9 - 1, self.__tile_size * 3):
                 pygame.draw.rect(self.__window, self.__boundary_color,
                                  (0, y - 2, self.__windowSize[0], 4))
-
+            
         def draw_tiles():
             """Draw the tiles on the screen."""
             # For each coordinate on the board
@@ -278,7 +279,7 @@ class Game(object):
                 self.__display_message = message[1]
             # Display the message if its duration is greater than 0
             if self.__message_duration > 0:
-                self.__message_duration -= 50
+                self.__message_duration -= 10
                 text_color = (
                     255 - self.__tile_color[0], 255 - self.__tile_color[1], 255 - self.__tile_color[2])
                 text = self.__font.render(
@@ -288,11 +289,27 @@ class Game(object):
                     self.__windowSize[0] // 2, self.__windowSize[1] // 2)
                 self.__window.blit(text, text_rect)
 
+        def draw_time():
+            text = "Time(s): "
+            if self.end_time:
+                text += f"{round(self.end_time - self.start_time, 2)}"
+            else:
+                text += f"{round(time.time() - self.start_time, 2)}"
+
+            #Draw a boundary at the end of the board, for the time panel
+            pygame.draw.rect(self.__window, self.__boundary_color, (0, self.__tile_size * 9, self.__windowSize[0], 2))
+            pygame.draw.rect(self.__window, self.__tile_color, (0, self.__tile_size * 9 + 1, self.__windowSize[0], 50))
+
+            text = self.__font.render(text, True, (0, 0, 0))
+            
+            self.__window.blit(text, (12.5, self.__tile_size * 9 + 12.5))
+
         # Call functions
         self.__window.fill(self.__background_color)
         draw_boundaries()
         draw_tiles()
         draw_message()
+        draw_time()
         pygame.display.update()
 
     def __mouseHandler(self):
@@ -376,8 +393,8 @@ class Game(object):
                         self.__key_bindings[mod][binds]()
                         # Show the users change immedietly.
                         self.__draw()
-                        # Wait for 150 ms to prevent registering the same keypress multiple times.
-                        pygame.time.delay(150)
+                        # Wait for 100 ms to prevent registering the same keypress multiple times.
+                        pygame.time.delay(100)
                         # Break to prevent different bindings using the same key(s) from triggering.
                         break
                 break
@@ -445,6 +462,7 @@ class Game(object):
         self.worker_thread = None
         self.complete = False
         self.start_time = time.time()
+        self.end_time = None
 
     def __check_win(self):
         """Checks whether the sudoku board has been completed."""
@@ -458,6 +476,7 @@ class Game(object):
                     if num == 0:
                         return False
             self.complete = True
+            self.end_time = time.time()
             return True
 
     # Public methods
@@ -481,11 +500,12 @@ class Game(object):
 
             with self.__lock:
                 self.__move_active(active_pos, True)
-                self.__draw()
         # Start the solver thread if one is not already running
         if not self.worker_thread:
             s = Solver(self.__board, False, update_active)
             self.worker_thread = s
+            #Reset start time so we are timing the worker thread
+            self.start_time = time.time()
             self.worker_thread.start()
 
     def open(self):
@@ -518,10 +538,10 @@ class Game(object):
 
             if self.__check_win():
                 # Carry out win action
-                self.flash_message(f"Complete, took {round(time.time() - self.start_time, 2)} seconds", 2000)
+                self.flash_message(f"Complete, took {round(time.time() - self.start_time, 2)} seconds", 1000)
             # print("Time taken: " + str(end - strt))
             # Delay of 10 ms to set framerate to 100fps
-            pygame.time.delay(50)
+            pygame.time.delay(10)
         pygame.quit()
 
     def close(self):
