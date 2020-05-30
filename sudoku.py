@@ -13,7 +13,6 @@ from solver import Solver
 import generator
 from typing import Optional, Tuple, List
 
-
 class DifficultyChooser(object):
     """
     GUI to choose a difficulty.
@@ -224,12 +223,12 @@ class Game(object):
             for x in range(self.__tile_size * 3, self.__tile_size * 9 - 1, self.__tile_size * 3):
                 pygame.draw.rect(self.__window, self.__boundary_color,
                                  (x-2, 0, 4, self.__windowSize[1] - 50))
-            
+
             # Draw boundaries down the board
             for y in range(self.__tile_size * 3, self.__tile_size * 9 - 1, self.__tile_size * 3):
                 pygame.draw.rect(self.__window, self.__boundary_color,
                                  (0, y - 2, self.__windowSize[0], 4))
-            
+
         def draw_tiles():
             """Draw the tiles on the screen."""
             # For each coordinate on the board
@@ -296,12 +295,14 @@ class Game(object):
             else:
                 text += f"{round(time.time() - self.start_time, 2)}"
 
-            #Draw a boundary at the end of the board, for the time panel
-            pygame.draw.rect(self.__window, self.__boundary_color, (0, self.__tile_size * 9, self.__windowSize[0], 2))
-            pygame.draw.rect(self.__window, self.__tile_color, (0, self.__tile_size * 9 + 1, self.__windowSize[0], 50))
+            # Draw a boundary at the end of the board, for the time panel
+            pygame.draw.rect(self.__window, self.__boundary_color,
+                             (0, self.__tile_size * 9, self.__windowSize[0], 2))
+            pygame.draw.rect(self.__window, self.__tile_color,
+                             (0, self.__tile_size * 9 + 1, self.__windowSize[0], 50))
 
             text = self.__font.render(text, True, (0, 0, 0))
-            
+
             self.__window.blit(text, (12.5, self.__tile_size * 9 + 12.5))
 
         # Call functions
@@ -323,7 +324,7 @@ class Game(object):
         if mouse_preses[0]:
             self.__move_active([tile_x, tile_y], absolute=True)
 
-    def __move_active(self, vector:Tuple[int, int], absolute:Optional[bool]=False):
+    def __move_active(self, vector: Tuple[int, int], absolute: Optional[bool] = False):
         """
         Moves the active tile by the given vector when absolute is false.\n
         Moves the active tile TO the given vector when absolute is true.
@@ -343,13 +344,13 @@ class Game(object):
             if new_active[0] < 9 and new_active[1] < 9 and new_active[0] >= 0 and new_active[1] >= 0:
                 self.__active_tile = new_active
 
-    def __set_active(self, value:int):
+    def __set_active(self, value: int):
         """Will set the active tile to the passed value, if it passes the __is_valid method."""
 
         if self.__is_valid(self.__active_tile, value):
             self.__board[self.__active_tile[0]][self.__active_tile[1]] = value
 
-    def __is_valid(self, pos:Tuple[int, int], value:int):
+    def __is_valid(self, pos: Tuple[int, int], value: int):
         """Validates the current board setup."""
 
         # Check whether the specified tile is writable.
@@ -399,7 +400,7 @@ class Game(object):
                         break
                 break
 
-    def __load_puzzle(self, difficulty:str):
+    def __load_puzzle(self, difficulty: str):
         """
         Loads a random puzzle from the puzzles.json file genereated by the puzzle generator.
         The puzzle is blended and rotated, so even if the same puzzle is loaded, it should look different.
@@ -480,13 +481,13 @@ class Game(object):
             return True
 
     # Public methods
-    def flash_message(self, message:str, delay:int):
+    def flash_message(self, message: str, delay: int):
         """Add message to the message queue."""
 
         message = (delay, message)
         self.__message_queue.append(message)
 
-    def flash_messages(self, message_list:List[str], delay_list:List[int]):
+    def flash_messages(self, message_list: List[str], delay_list: List[int]):
         """Adds passed messages with given delays to the message queue."""
 
         messages = zip(delay_list, message_list)
@@ -500,12 +501,12 @@ class Game(object):
 
             with self.__lock:
                 self.__move_active(active_pos, True)
-                
+
         # Start the solver thread if one is not already running
         if not self.worker_thread:
             s = Solver(self.__board, False, update_active)
             self.worker_thread = s
-            #Reset start time so we are timing the worker thread
+            # Reset start time so we are timing the worker thread
             self.start_time = time.time()
             self.worker_thread.start()
 
@@ -539,7 +540,8 @@ class Game(object):
 
             if self.__check_win():
                 # Carry out win action
-                self.flash_message(f"Complete, took {round(time.time() - self.start_time, 2)} seconds", 1000)
+                self.flash_message(
+                    f"Complete, took {round(time.time() - self.start_time, 2)} seconds", 1000)
             # print("Time taken: " + str(end - strt))
             # Delay of 10 ms to set framerate to 100fps
             pygame.time.delay(10)

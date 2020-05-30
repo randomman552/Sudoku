@@ -9,8 +9,9 @@ import os
 
 from typing import Any
 
-#Location the puzzles are stored
+# Location the puzzles are stored
 puzzle_store = "puzzles.json"
+
 
 def get_random_string(length: int) -> str:
     """Function generates a random string and returns it."""
@@ -127,6 +128,7 @@ def generate_puzzle(seed: Any) -> dict:
         output[difficulty] = _generate(difficulty_mapping[difficulty], seed)
     return output
 
+
 def load_boards() -> dict:
     """
     Load the puzzles from file.
@@ -141,10 +143,12 @@ def load_boards() -> dict:
         pass
     return puzzles
 
-def save_boards(boards) -> None:
+
+def save_boards(boards: dict) -> None:
     """Save the given boards to the puzzle storage location."""
     with open(puzzle_store, "w") as file:
         json.dump(boards, file, indent=4)
+
 
 def main():
     # Create the generate arg parser
@@ -207,12 +211,13 @@ def main():
                     for result in results:
                         got_all = True
                         try:
-                            #If the seed is not already present in the puzzles
+                            # If the seed is not already present in the puzzles
                             if result[0] not in puzzles:
                                 puzzles[result[0]] = result[1].get(0.25)
-                                print(f"Puzzle generated with seed '{result[0]}'")
+                                print(
+                                    f"Puzzle generated with seed '{result[0]}'")
                         except:
-                            #If we fail to get one of the puzzles
+                            # If we fail to get one of the puzzles
                             got_all = False
 
                 save_boards(puzzles)

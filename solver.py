@@ -1,6 +1,7 @@
 import threading
 from typing import List, Optional, Callable, Tuple
 
+
 class Solver(threading.Thread):
     """
     Class for solving a sudoku board (sub class of threading.Thread)
@@ -11,7 +12,7 @@ class Solver(threading.Thread):
             no_of_solutions (int) - Optional int, defines the number of solutions for the solver to generate, defaults to 1. The solver will terminate when it reaches this number.
     """
 
-    def __init__(self, board:List[List[int]], separate:Optional[bool]=True, update_function:Optional[Callable]=None, no_of_solutions:Optional[int]=1):
+    def __init__(self, board: List[List[int]], separate: Optional[bool] = True, update_function: Optional[Callable] = None, no_of_solutions: Optional[int] = 1):
 
         # Initalise the Thread
         super().__init__(name="Solver")
@@ -39,7 +40,7 @@ class Solver(threading.Thread):
         # Stop event allows this thread to be stopped before it finishes if required
         self.stop_event = threading.Event()
 
-    def __is_valid(self, pos:Tuple[int, int], value:int):
+    def __is_valid(self, pos: Tuple[int, int], value: int):
         """Validates the current board setup."""
         for x in range(9):
             for y in range(9):
@@ -49,7 +50,7 @@ class Solver(threading.Thread):
                         return False
         return True
 
-    def update(self, position:Tuple[int, int], board:List[List[int]]):
+    def update(self, position: Tuple[int, int], board: List[List[int]]):
         """
         This is a placeholder update function, this is called for each tile attempt, and could be used to update another window or print to the console.
         This can be overridden by subclassing if desireable.
@@ -62,11 +63,10 @@ class Solver(threading.Thread):
         # This is split off into another function in order to allow the aborting of this
         try:
             self.__solve(self.no_of_solutions)
-        except RuntimeError as error:
-            #print(error)
+        except RuntimeError:
             pass
 
-    def __solve(self, no_of_solutions:Optional[int]=1, start_pos:Optional[Tuple[int, int]]=[0, 0]):
+    def __solve(self, no_of_solutions: Optional[int] = 1, start_pos: Optional[Tuple[int, int]] = [0, 0]):
         """
         Backtracking algorithm for solving the sudoku board passed when initialised\n
         Once function is complete, the results can be found in the solver.solutions list\n
